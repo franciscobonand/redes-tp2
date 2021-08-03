@@ -7,12 +7,12 @@ from client import Client
 # client: ./dcc023c2 -c <IP> <port> <input> <output>
 if __name__ == "__main__":
     if len(sys.argv) == 5:
-        kind = "s"
+        kind = sys.argv[1]
         port = sys.argv[2]
         input = sys.argv[3]
         output = sys.argv[4]
     elif len(sys.argv) == 6:
-        kind = "c"
+        kind = sys.argv[1]
         host = sys.argv[2]
         port = sys.argv[3]
         input = sys.argv[4]
@@ -23,9 +23,11 @@ if __name__ == "__main__":
         print("./dcc023c2 -c <IP> <port> <input> <output>")
         sys.exit(1)
 
-    if kind == "s":
-        s = Server(port, input, output)
+    sync = 0xdcc023c2
+
+    if kind == "-s":
+        s = Server(port, input, output, sync)
         s.run()
     else:
-        c = Client(host, port, input, output)
+        c = Client(host, port, input, output, sync)
         c.run()

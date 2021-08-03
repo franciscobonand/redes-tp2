@@ -1,39 +1,48 @@
 import socket
-import base64
+import utils
 from struct import *
-
-HEADER_SIZE = 14
 
 
 class Server:
-    def __init__(self, port, input, output):
+    def __init__(self, port, input, output, sync):
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.port = int(port)
         self.input = input
-        self.output = output
+        self.output_file = output
+        self.output_data = b""
+        self.sync = sync
+        self.f_id = 1
+
+    def ack(self, conn):
+        frame = utils.generate_frame("", self.sync, self.f_id, utils.ACK_FLAG)
+        conn.sendall(frame)
 
     def run(self):
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        with self.sock as s:
             s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            s.bind(('', self.port))
+            s.bind(("", self.port))
 
             print(f"server listening on port {self.port}")
             s.listen()
 
             conn, addr = s.accept()
             with conn:
-                print('connected by', addr)
-                while True:
-                    data = conn.recv(1024)
-                    if len(data) > 0:
-                        decoded = base64.b16decode(data)
-                        print(decoded)
-                        sync1, sync2, length, chksum, id, flags = unpack(
-                            '!IIHHBB', decoded[:HEADER_SIZE])
+                print("connected by", addr)
 
-                        print(decoded[HEADER_SIZE:HEADER_SIZE + length])
-                    if not data:
+                while True:
+                    msg, f_id, flag = utils.receive_frame(conn, self.sync)
+
+                    if f_id == None:
+                        print("transmission error (timeout)")
+                        continue
+                    elif flag == utils.END_FLAG:
+                        print(
+                            f"communication with {addr} concluded successfully")
                         break
-                    conn.sendall(data)
-# test = base64.b16decode(frame)
-#             print(test)
-#             print(unpack("!IIHHBB", test[:14]))
+                    elif self.f_id != f_id:
+                        self.f_id = f_id
+                        self.output_data += msg
+                        self.ack(conn)
+
+        with open(self.output_file, "wb") as output:
+            output.write(self.output_data[utils.HEADER_SIZE:])

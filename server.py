@@ -1,7 +1,22 @@
 import socket
 import utils
 from struct import *
-import time
+
+
+def socket_is_closed(sock):
+    try:
+        # this will try to read bytes without blocking and also without removing them from buffer (peek only)
+        data = sock.recv(16, socket.MSG_DONTWAIT | socket.MSG_PEEK)
+        if len(data) == 0:
+            return True
+    except BlockingIOError:
+        return False  # socket is open and reading from it would block
+    except ConnectionResetError:
+        return True  # socket was closed for some other reason
+    except Exception as e:
+        print("unexpected exception when checking if a socket is closed")
+        return False
+    return False
 
 
 class Server:
@@ -20,31 +35,46 @@ class Server:
 
     def run(self):
         with self.sock as s:
-            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            s.bind(("", self.port))
+            try:
+                s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                s.bind(("", self.port))
 
-            print(f"server listening on port {self.port}")
-            s.listen()
+                print(f"server listening on port {self.port}")
 
-            conn, addr = s.accept()
-            with conn:
-                print("connected by", addr)
-
+                s.listen()
                 while True:
-                    msg, f_id, flag = utils.receive_frame(conn, self.sync)
+                    conn, addr = s.accept()
+                    with conn:
+                        print("connected by", addr)
 
-                    if f_id == None:
-                        print("transmission error (timeout)")
-                        time.sleep(10)
-                        continue
-                    elif flag == utils.END_FLAG:
-                        print(
-                            f"communication with {addr} concluded successfully")
-                        break
-                    elif self.f_id != f_id:
-                        self.f_id = f_id
-                        self.output_data += msg
-                        self.ack(conn)
+                        while True:
+                            msg, f_id, flag = utils.receive_frame(
+                                conn, self.sync)
 
-        with open(self.output_file, "wb") as output:
-            output.write(self.output_data)
+                            if f_id == None:
+                                if socket_is_closed(conn):
+                                    print("connection with client was closed")
+                                    conn.close()
+                                    break
+                                else:
+                                    print("invalid frame received")
+                                    continue
+                            elif flag == utils.END_FLAG:
+                                print(
+                                    f"communication with {addr} concluded successfully")
+                                conn.close()
+                                break
+                            elif self.f_id != f_id:
+                                print(f"received frame {f_id}")
+                                self.f_id = f_id
+                                self.output_data += msg
+                                print(f"sending ack of frame {f_id}")
+                                self.ack(conn)
+
+                        with open(self.output_file, "ab") as output:
+                            output.write(self.output_data + b'\n')
+                        self.f_id = 1
+                        self.output_data = b""
+            except:
+                print("connection closed")
+                s.close()

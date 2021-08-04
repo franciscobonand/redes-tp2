@@ -1,6 +1,7 @@
 import base64
 from struct import *
 import select
+import binascii
 # SYNC | SYNC | length | chksum | ID |flags| dados
 
 BUFSZ = 2**16
@@ -29,7 +30,7 @@ def generate_frame(word, sync, f_id, flag):
 
 
 def receive_frame(sock, sync):
-    ready_for_reading, _, _ = select.select([sock], [], [], 1.0)
+    ready_for_reading, _, _ = select.select([sock], [], [], 5.0)
     if not ready_for_reading:
         return (None, None, None)
 
@@ -79,22 +80,18 @@ def validChecksum(sync, rec_chksum, f_id, flag, word):
     return False
 
 
+def carry_around_add(a, b):
+    c = a + b
+    return (c & 0xffff) + (c >> 16)
+
+
 def checksum(frame):
     s = 0
     msg = bytes.hex(frame)
+
     # loop taking 2 characters at a time
     for i in range(0, len(msg), 2):
-        if (i+1) < len(msg):
-            a = ord(str(msg[i]))
-            b = ord(str(msg[i+1]))
-            s = s + (a+(b << 8))
-        elif (i+1) == len(msg):
-            s += ord(msg[i])
-        else:
-            raise "error while computing checksum"
+        w = ord(msg[i]) + (ord(msg[i+1]) << 8)
+        s = carry_around_add(s, w)
 
-    # one's complement
-    s = s + (s >> 16)
-    s = ~s & 0xffff
-
-    return s
+    return ~s & 0xffff

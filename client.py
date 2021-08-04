@@ -1,5 +1,5 @@
 import socket
-import base64
+import time
 from struct import *
 import utils
 
@@ -36,25 +36,35 @@ class Client:
         total_frames = (len(file_data) // FRAME_LENGTH) + 1
 
         with self.sock as s:
-            s.connect((self.host, self.port))
-            msg = file_data[:FRAME_LENGTH]
+            try:
+                s.connect((self.host, self.port))
+                msg = file_data[:FRAME_LENGTH]
+                time.sleep(10)
+                while self.frameID < total_frames:
+                    frame = utils.generate_frame(
+                        msg, self.sync, self.frameID % 2, STD_FLAG)
 
-            while self.frameID < total_frames:
-                frame = utils.generate_frame(
-                    msg, self.sync, self.frameID % 2, STD_FLAG)
+                    print(f"sending frame {self.frameID}")
+                    s.sendall(frame)
 
-                print(f"sending frame {self.frameID}")
-                s.sendall(frame)
+                    msg, f_id, flag = utils.receive_frame(s, self.sync)
 
-                msg, f_id, flag = utils.receive_frame(s, self.sync)
-                if f_id == None:
-                    print("transmission error (timeout)")
-                    continue
-                elif flag == utils.ACK_FLAG:
-                    print(f"ack received for frame {f_id}")
-                    self.frameID += 1
-                    start, end = self.get_nxt_msg(len(file_data))
-                    msg = file_data[start:end]
+                    while f_id == None:
+                        print("ack not received (timeout)")
+                        print(f"sending frame {self.frameID} again")
+                        s.sendall(frame)
+                        msg, f_id, flag = utils.receive_frame(s, self.sync)
 
-            self.end()
-            print("frames successfully sent to server")
+                    if flag == utils.ACK_FLAG:
+                        print(f"ack received for frame {f_id}")
+                        self.frameID += 1
+                        start, end = self.get_nxt_msg(len(file_data))
+                        msg = file_data[start:end]
+                    else:
+                        raise "Invalid flag received"
+
+                self.end()
+                print("frames successfully sent to server")
+            except:
+                print("connection closed")
+                s.close()

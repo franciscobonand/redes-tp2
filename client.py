@@ -64,6 +64,7 @@ class Client:
 
                 self.end()
                 print("frames successfully sent to server")
+                s.close()
             except:
                 print("connection closed")
                 s.close()

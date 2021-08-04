@@ -64,6 +64,10 @@ class Server:
                                 print(
                                     f"communication with {addr} concluded successfully")
                                 conn.close()
+                                with open(self.output_file, "ab") as output:
+                                    output.write(self.output_data + b'\n')
+                                self.f_id = 1
+                                self.output_data = b""
                                 break
                             elif self.f_id != f_id:
                                 print(f"received frame {f_id}")
@@ -71,11 +75,6 @@ class Server:
                                 self.output_data += msg
                                 print(f"sending ack of frame {f_id}")
                                 self.ack(conn)
-
-                        with open(self.output_file, "ab") as output:
-                            output.write(self.output_data + b'\n')
-                        self.f_id = 1
-                        self.output_data = b""
             except:
                 print("connection closed")
                 s.close()

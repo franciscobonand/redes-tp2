@@ -1,5 +1,4 @@
 import socket
-import time
 from struct import *
 import utils
 
@@ -39,7 +38,7 @@ class Client:
             try:
                 s.connect((self.host, self.port))
                 msg = file_data[:FRAME_LENGTH]
-                time.sleep(10)
+
                 while self.frameID < total_frames:
                     frame = utils.generate_frame(
                         msg, self.sync, self.frameID % 2, STD_FLAG)

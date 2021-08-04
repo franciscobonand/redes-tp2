@@ -40,6 +40,7 @@ class Server:
                 s.bind(("", self.port))
 
                 print(f"server listening on port {self.port}")
+                print("use ctrl+C to close the server")
 
                 s.listen()
                 while True:

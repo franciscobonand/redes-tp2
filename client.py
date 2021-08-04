@@ -32,7 +32,7 @@ class Client:
         with open(self.input, "rb") as reader:
             file_data = reader.read()
         # total_frames = all data per frame + end frame
-        total_frames = (len(file_data) // FRAME_LENGTH) + 1
+        total_frames = (len(file_data) // FRAME_LENGTH)
 
         with self.sock as s:
             try:

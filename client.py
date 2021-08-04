@@ -2,7 +2,6 @@ import socket
 import base64
 from struct import *
 import utils
-# SYNC | SYNC | length | chksum | ID |flags| dados
 
 BUFSZ = 2**16
 FRAME_LENGTH = 2**16 - 1

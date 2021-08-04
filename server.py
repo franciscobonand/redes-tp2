@@ -1,6 +1,7 @@
 import socket
 import utils
 from struct import *
+import time
 
 
 class Server:
@@ -34,6 +35,7 @@ class Server:
 
                     if f_id == None:
                         print("transmission error (timeout)")
+                        time.sleep(10)
                         continue
                     elif flag == utils.END_FLAG:
                         print(
@@ -45,4 +47,4 @@ class Server:
                         self.ack(conn)
 
         with open(self.output_file, "wb") as output:
-            output.write(self.output_data[utils.HEADER_SIZE:])
+            output.write(self.output_data)

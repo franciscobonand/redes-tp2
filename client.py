@@ -59,8 +59,6 @@ class Client:
                         self.frameID += 1
                         start, end = self.get_nxt_msg(len(file_data))
                         msg = file_data[start:end]
-                    else:
-                        raise "Invalid flag received"
 
                 self.end()
                 print("frames successfully sent to server")
